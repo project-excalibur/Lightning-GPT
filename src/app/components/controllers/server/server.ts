@@ -9,3 +9,5 @@ export const gptApi = new ChatGPTAPI({
       top_p: 0.8
     }
   })
+
+  

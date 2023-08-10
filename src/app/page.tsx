@@ -2,29 +2,34 @@
 import { useEffect, useRef, useState } from "react";
 import { FaGithub, FaTwitter } from "react-icons/fa";
 import { ChatMessage } from "chatgpt";
-import {
-  callChatGPT,
-  countTokens,
-} from "./components/controllers/utils";
+import { callChatGPT, countTokens } from "./components/controllers/utils";
 import { ENV } from "./components/models/env";
 import Head from "next/head";
+import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react"
+import { SignInButton, SignOutButton } from "./components/views/SignIn";
 
 interface ExtendedChatMessage extends ChatMessage {
   isUser: boolean;
 }
 
 export default function Home() {
-
   // -------------- STATE ---------------------------
+  const searchParams = useSearchParams();
+  const code = searchParams.get("code");
   const [questionText, setQuestionText] = useState("");
   const [questionCost, setQuestionCost] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ExtendedChatMessage[]>([]);
   const [shakeFeedbackOn, setShakeFeedbackOn] = useState(false);
-  const [lastTransactionCost, setLastTransactionCost] = useState<number | null>(null);
+  const [lastTransactionCost, setLastTransactionCost] = useState<number | null>(
+    null
+  );
+
+  const { data: session, status } = useSession();
+  console.log(session, status)
 
   const questionInputRef = useRef<HTMLTextAreaElement>(null);
-
 
   // -------------- EFFECTS ---------------------------
 
@@ -41,11 +46,10 @@ export default function Home() {
         isUser: false,
         id: "",
         text: "Hello there! Welcome to Lightning-GPT! Here you can spend small amounts of lightning per Chat-GPT4 question. To start you will need to: ... \n\n",
-        role: "system"
+        role: "system",
       },
-    ])
+    ]);
   }, []);
-
 
   // -------------- FUNCTIONS ---------------------------
 
@@ -71,7 +75,6 @@ export default function Home() {
     if (isLoading) return;
     setIsLoading(true);
 
-
     // Sets up question
     const userMessage: ExtendedChatMessage = {
       conversationId:
@@ -95,7 +98,7 @@ export default function Home() {
         setLastTransactionCost(data.cost);
       })
       .catch((e) => {
-        alert(`${e}`)
+        alert(`${e}`);
         console.error(e);
       })
       .finally(() => {
@@ -122,7 +125,10 @@ export default function Home() {
 
       <div className="flex flex-col h-screen bg-gray-900 text-white">
         {/* Socials */}
-        <div className="absolute z-0 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-opacity-10 text-5xl" style={{top: 'calc(50% - 5vh)'}}>
+        <div
+          className="absolute z-0 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-opacity-10 text-5xl"
+          style={{ top: "calc(50% - 5vh)" }}
+        >
           Lightning-GPT
         </div>
 
@@ -148,6 +154,13 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Lightning */}
+        <div className="absolute top-4 right-4 space-x-4">
+          <a href={process.env.NEXT_PUBLIC_ALBY_URL}>Connect</a>
+          <p>{code}</p>
+          <SignInButton/>
+          <SignOutButton/>
+        </div>
 
         {/* Loader Overlay */}
         {isLoading && (
@@ -156,25 +169,23 @@ export default function Home() {
           </div>
         )}
 
-{/* Chat Section */}
-<div
-  className="flex-grow overflow-auto space-y-4 flex items-center justify-center h-[80vh] z-1"
->
-  <div className="w-full h-full overflow-y-auto px-32 pr-64">
-    {messages.map((message, index) => (
-      <div
-        key={index}
-        className={`my-5 mx-4 p-3 rounded-lg max-w-md ${
-          message.isUser
-            ? "ml-auto bg-blue-500 text-white"
-            : "mr-auto bg-gray-700 text-white"
-        }`}
-      >
-        <p className="text-base whitespace-pre-wrap">{message.text}</p>
-      </div>
-    ))}
-  </div>
-</div>
+        {/* Chat Section */}
+        <div className="flex-grow overflow-auto space-y-4 flex items-center justify-center h-[80vh] z-1">
+          <div className="w-full h-full overflow-y-auto px-32 pr-64">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`my-5 mx-4 p-3 rounded-lg max-w-md ${
+                  message.isUser
+                    ? "ml-auto bg-blue-500 text-white"
+                    : "mr-auto bg-gray-700 text-white"
+                }`}
+              >
+                <p className="text-base whitespace-pre-wrap">{message.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Input Section */}
         <div className="flex flex-col items-center px-4 pb-2 bg-gray-800 border-t-2 border-gray-700 z-2">
