@@ -137,7 +137,6 @@ export default function Home() {
   }
 
   const webLNFunction = () => {
-    if (webln) {
       if (!lightningInvoice) {
         createInvoice({
           amount: questionCost,
@@ -145,7 +144,14 @@ export default function Home() {
           // expiry: 30, //seconds
         }).then((invoice) => {
           setLightningInvoice(invoice);
+          if(webln){
+            webln.sendPayment(invoice.invoice);
+          }
+
         });
+
+
+
       } else {
         checkInvoicePaid(lightningInvoice).then((isPaid) => {
           if (isPaid) {
@@ -154,7 +160,6 @@ export default function Home() {
           }
         });
       }
-    }
   };
 
   return (

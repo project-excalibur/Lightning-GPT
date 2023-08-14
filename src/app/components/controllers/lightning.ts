@@ -3,6 +3,7 @@
 export interface LightningInvoice {
     invoice: string;
     hash: string; 
+    qrInvoice: string;
 }
 
 export interface CreateInvoicePayload {
@@ -38,8 +39,9 @@ export interface CreateInvoicePayload {
   
     const raw = await response.json();
     return {
-        invoice: `lightning:${raw.payment_request}`,
-        hash: raw.payment_hash
+        invoice: `${raw.payment_request}`,
+        hash: raw.payment_hash,
+        qrInvoice: `lightning:${raw.payment_request}`
     } as LightningInvoice
   }
 
