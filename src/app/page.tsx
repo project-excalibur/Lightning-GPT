@@ -2,44 +2,29 @@
 import { useEffect, useRef, useState } from "react";
 import { FaGithub, FaTwitter } from "react-icons/fa";
 import { ChatMessage } from "chatgpt";
-import { callChatGPT, countTokens } from "./components/controllers/utils";
-import { ENV } from "./components/models/env";
 import Head from "next/head";
 import { WebLNProvider, requestProvider } from "webln";
-import {
-  LightningInvoice,
-  checkInvoicePaid,
-  createInvoice,
-} from "./components/controllers/lightning";
 import { useQRCode } from "next-qrcode";
 import Modal from "./components/modals/Modal";
-// https://legend.lnbits.com/wallet?usr=3d7875e5fbb0418e835f3e7228e375a2&wal=692ed658d75147a1aec12f51632847e4
-
-interface ExtendedChatMessage extends ChatMessage {
-  isUser: boolean;
-}
+import { LightningInvoice } from "./components/models/lightningModels";
+import { checkInvoicePaid, createInvoice, getTimestamp } from "./components/controllers/lightningClient";
+import { useChat } from "ai/react";
+import { getUUID } from "./components/controllers/getId";
+import SessionTimer from "./components/views/SessionTimer";
 
 export default function Home() {
   // -------------- STATE ---------------------------
   const [webln, setWebln] = useState<null | WebLNProvider>(null);
   const [lightningInvoice, setLightningInvoice] =
     useState<null | LightningInvoice>(null);
-  const [questionText, setQuestionText] = useState("");
-  const [userMessageData, setUserMessageData] = useState<null | any>(null)
-  const [chatGPTData, setChatGPTData] = useState<null | any>(null)
-  const [questionCost, setQuestionCost] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<ExtendedChatMessage[]>([]);
   const [shakeFeedbackOn, setShakeFeedbackOn] = useState(false);
-  const [lastTransactionCost, setLastTransactionCost] = useState<number | null>(
-    null
-  );
-  const [checkInterval, setCheckInterval] = useState<ReturnType<
-    typeof setInterval
-  > | null>(null);
+  const [userUUID, setUserUUID] = useState<string | null>(null);
+  const [timestamp, setTimestamp] = useState<number>(0);
+  const [invoiceInterval, setInvoiceInterval] = useState<NodeJS.Timer | null>();
 
   const { Canvas } = useQRCode();
   const questionInputRef = useRef<HTMLTextAreaElement>(null);
+  const { messages, input, handleInputChange, handleSubmit } = useChat({body: {uuid: userUUID}})
 
   // -------------- EFFECTS ---------------------------
 
@@ -47,23 +32,25 @@ export default function Home() {
     requestProvider().then(setWebln);
   }, []);
 
-  // // Question Costs
-  // useEffect(() => {
-  //   setQuestionCost(0);
-  // }, [questionText, countTokens]);
-
-  // Focus on start
   useEffect(() => {
-    questionInputRef.current?.focus();
-    setMessages([
-      {
-        isUser: false,
-        id: "",
-        text: "Hello there! Welcome to Lightning-GPT! Here you can spend small amounts of lightning per Chat-GPT4 question. To start you will need to: ... \n\n",
-        role: "system",
-      },
-    ]);
+    return ()=>{
+      if(invoiceInterval){
+        clearInterval(invoiceInterval)
+      }
+    }
+  }, [invoiceInterval]);
+
+  useEffect(() => {
+    if(typeof window !== "undefined"){
+      setUserUUID(getUUID())
+    }
   }, []);
+
+  useEffect(() => {
+    if(userUUID){
+      getTimestamp(userUUID).then(setTimestamp)
+    }
+  }, [userUUID]);
 
   // -------------- FUNCTIONS ---------------------------
 
@@ -75,92 +62,50 @@ export default function Home() {
 
   // ------------ HANDLERS -------------------
 
-  const handleSendMessage = (e: any) => {
-    // So Enter can be used
+  const handleSendMessage = (e:any) => {
+
     e.preventDefault();
 
-    // Shakes if nothing entered
-    if (!questionText) {
+    if (!input) {
       shake();
       return;
     }
 
-    // Checks loading
-    if (isLoading) return;
-    setIsLoading(true);
-
-    // Sets up question
-    const userMessage: ExtendedChatMessage = {
-      conversationId:
-        messages.length > 0 ? messages[0].conversationId : undefined,
-      parentMessageId:
-        messages.length > 0 ? messages[messages.length - 1].id : undefined,
-      text: questionText,
-      isUser: true,
-      id: "",
-      role: "user",
-    };
-
-    callChatGPT(
-      questionText,
-      userMessage.conversationId,
-      userMessage.parentMessageId
-    )
-      .then((data) => {
-        setChatGPTData(data);
-        setUserMessageData(userMessage);
-        webLNFunction();
-      })
-      .catch((e) => {
-        alert(`${e}`);
-        console.error(e);
-      })
-      .finally(() => {
-        setIsLoading(false);
-        setQuestionText("");
-      });
-  };
-
-  const handleInputChange = (e: any) => {
-    setQuestionText(e.target.value);
-    setQuestionCost(countTokens(e.target.value));
-  };
-
-  const reportQA = ()=>{
-    if(chatGPTData){
-        const aiMessage = { ...chatGPTData.response, isUser: false };
-        setMessages([...messages, userMessageData, aiMessage]);
-        setLastTransactionCost(chatGPTData.cost);
-        setChatGPTData(null);
-        setUserMessageData(null);
-    }
+    handleSubmit(e);
   }
 
-  const webLNFunction = () => {
-      if (!lightningInvoice) {
-        createInvoice({
-          amount: questionCost,
-          memo: "Lightning-GPT",
-          // expiry: 30, //seconds
-        }).then((invoice) => {
-          setLightningInvoice(invoice);
-          if(webln){
-            webln.sendPayment(invoice.invoice);
-          }
+  const buyMoreTime = () => {
+    if (!lightningInvoice && userUUID) {
+      createInvoice({
+        amount: Number(process.env.NEXT_PUBLIC_SESSION_COST),
+        memo: "Lightning-GPT",
+        uuid: userUUID
+        // expiry: 30, //seconds
+      }).then((invoice) => {
 
-        });
+        setLightningInvoice(invoice);
+        setInvoiceInterval(
+          setInterval(()=>{
+            checkInvoicePaid(invoice).then((isPaid) => {
+              if (isPaid) {
+                setLightningInvoice(null);
+                getTimestamp(userUUID).then(setTimestamp)
+                if(invoiceInterval){
+                  clearInterval(invoiceInterval as NodeJS.Timer);
+                  setInvoiceInterval(null);
+                }
+              }
+            });
+          }, 1000)
+        )
 
+        if(webln){
+          webln.sendPayment(invoice.invoice);
+        }
 
-
-      } else {
-        checkInvoicePaid(lightningInvoice).then((isPaid) => {
-          if (isPaid) {
-            setLightningInvoice(null);
-            reportQA();
-          }
-        });
-      }
-  };
+      });
+    }
+  }
 
   return (
     <>
@@ -205,12 +150,12 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Loader Overlay */}
+        {/* Loader Overlay
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
             <p className="animate-pulse text-5xl">Loading...</p>
           </div>
-        )}
+        )} */}
 
         {/* Loader Overlay */}
         {lightningInvoice &&  (
@@ -230,26 +175,28 @@ export default function Home() {
                 },
               }}
             />
-            {questionCost} satoshis
-            <button className="py-2 px-6 rounded-lg bg-blue-500 text-white" onClick={webLNFunction}>Check Payment</button>
+            {process.env.NEXT_PUBLIC_SESSION_COST} satoshis ( Waiting for Payment )
+            {/* <p></p> */}
+            {/* <button className="py-2 px-6 rounded-lg bg-blue-500 text-white" onClick={checkPayment}>Check Payment</button> */}
             </div>
           
            </Modal>
         )}
 
         {/* Chat Section */}
+        
         <div className="flex-grow overflow-auto space-y-4 flex items-center justify-center h-[80vh] z-1">
           <div className="w-full h-full overflow-y-auto px-32 pr-64">
-            {messages.map((message, index) => (
+            {messages.map((message: any, index: number) => (
               <div
                 key={index}
                 className={`my-5 mx-4 p-3 rounded-lg max-w-md ${
-                  message.isUser
+                  message.role === "user"
                     ? "ml-auto bg-blue-500 text-white"
                     : "mr-auto bg-gray-700 text-white"
                 }`}
               >
-                <p className="text-base whitespace-pre-wrap">{message.text}</p>
+                <p className="text-base whitespace-pre-wrap">{message.content}</p>
               </div>
             ))}
           </div>
@@ -267,7 +214,7 @@ export default function Home() {
               className={`border-2 border-gray-600 rounded-lg flex-grow mr-4 py-2 px-4 bg-gray-700 text-white placeholder-gray-400 ${
                 shakeFeedbackOn ? "animate-shake" : ""
               }`}
-              value={questionText}
+              value={input}
               onChange={handleInputChange}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -278,15 +225,13 @@ export default function Home() {
               placeholder="Ask a question..."
               ref={questionInputRef}
             />
-            <button
-              className="py-2 px-6 rounded-lg bg-blue-500 text-white"
-              type="submit"
-            >
-              Send
-            </button>
+            <div className="flex flex-col gap-2">
+              <SessionTimer timestamp={timestamp} buyMoreTime={buyMoreTime} durationMS={Number(process.env.NEXT_PUBLIC_SESSION_TIME)} />
+            </div>
+
           </form>
           <p className="text-sm mt-3 text-gray-400">
-            This question will cost roughly {questionCost} Satoshis
+            Each {(Number(process.env.NEXT_PUBLIC_SESSION_TIME) / 1000 / 60).toFixed(0)} min will cost {process.env.NEXT_PUBLIC_SESSION_COST} sats
           </p>
         </div>
       </div>
