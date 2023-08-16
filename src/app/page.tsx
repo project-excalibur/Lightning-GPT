@@ -119,7 +119,15 @@ export default function Home() {
         invoiceIntervalRef.current = interval // Store the interval in the ref
 
         if (webln) {
-          webln.sendPayment(invoice.invoice)
+          webln.sendPayment(invoice.invoice).catch((e)=>{
+            console.log(`Error paying from webln ${e}`)
+            // setLightningInvoice(null);
+            // getTimestamp(userUUID).then(setTimestamp);
+            // if (invoiceIntervalRef.current) {
+            //   clearInterval(invoiceIntervalRef.current);
+            //   invoiceIntervalRef.current = null;
+            // }
+          })
         }
       })
     }
