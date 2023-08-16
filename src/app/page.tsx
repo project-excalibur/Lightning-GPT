@@ -137,33 +137,15 @@ export default function Home() {
         <meta property="og:type" content="website" />
       </Head>
 
-      <div className="flex flex-col h-screen text-white bg-gray-900">
+      <div className="relative flex flex-col h-screen text-white bg-gray-900">
         {/* Socials */}
         <div
-          className="absolute z-0 text-5xl text-white transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 text-opacity-10"
+          className="absolute z-10 text-4xl text-white transform -translate-x-1/2 -translate-y-1/2 md:text-5xl top-1/2 left-1/2 text-opacity-10"
           style={{ top: "calc(50% - 5vh)" }}>
           Lightning-GPT
         </div>
 
         {/* Socials */}
-
-        <div className="absolute h-screen text-white bg-gray-900">
-          {/* Icons Section */}
-          <div className="absolute space-x-4 top-4 left-4">
-            <a
-              href="https://github.com/CoachChuckFF/Solana-GPT"
-              target="_blank"
-              rel="noopener noreferrer">
-              <FaGithub className="text-2xl text-white cursor-pointer hover:text-blue-500" />
-            </a>
-            <a
-              href="https://twitter.com/CoachChuckFF"
-              target="_blank"
-              rel="noopener noreferrer">
-              <FaTwitter className="text-2xl text-white cursor-pointer hover:text-blue-500" />
-            </a>
-          </div>
-        </div>
 
         {/* Loader Overlay
         {isLoading && (
@@ -202,14 +184,14 @@ export default function Home() {
         {/* Chat Section */}
 
         <div className="flex-grow overflow-auto space-y-4 flex items-center justify-center h-[80vh] z-1">
-          <div className="w-full h-full px-32 pr-64 overflow-y-auto">
+          <div className="z-20 w-full h-full overflow-y-auto md:px-32">
             {messages.map((message: any, index: number) => (
               <div
                 key={index}
-                className={`my-5 mx-4 p-3 rounded-lg w-fit max-w-md ${
+                className={`my-5 mx-4 p-3 rounded-lg w-fit max-w-sm md:max-w-xl  ${
                   message.role === "user"
                     ? "ml-auto text-right bg-blue-500 text-white"
-                    : "mr-auto bg-gray-700 text-white"
+                    : "mr-auto  bg-gray-700 text-white"
                 }`}>
                 <p className="text-base whitespace-pre-wrap">
                   {message.content}
@@ -220,14 +202,14 @@ export default function Home() {
         </div>
 
         {/* Input Section */}
-        <div className="flex flex-col items-center px-4 pb-2 bg-gray-800 border-t-2 border-gray-700 z-2">
+        <div className="relative flex flex-col items-center px-4 pb-2 bg-gray-800 border-t-2 border-gray-700 z-2">
           <form
             onSubmit={handleSendMessage}
-            className="flex items-center justify-between w-full mt-5">
+            className="flex items-center justify-center w-full mt-5">
             <textarea
               maxLength={4000}
               style={{ height: "18vh" }}
-              className={`border-2 border-gray-600 rounded-lg flex-grow mr-4 py-2 px-4 bg-gray-700 text-white placeholder-gray-400 ${
+              className={`border-2 resize-none border-gray-600 rounded-lg flex-grow mr-4 py-2 px-4 bg-gray-700 text-white placeholder-gray-400 ${
                 shakeFeedbackOn ? "animate-shake" : ""
               }`}
               value={input}
@@ -241,7 +223,7 @@ export default function Home() {
               placeholder="Ask a question..."
               ref={questionInputRef}
             />
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col items-center justify-center gap-2 mx-auto mr-4">
               <SessionTimer
                 timestamp={timestamp}
                 buyMoreTime={buyMoreTime}
@@ -256,6 +238,23 @@ export default function Home() {
             )}{" "}
             min will cost {process.env.NEXT_PUBLIC_SESSION_COST} sats
           </p>
+          <div className="absolute flex text-white bottom-3 right-4">
+            {/* Icons Section */}
+            <div className="flex space-x-4 top-4 left-4 h-fit">
+              <a
+                href="https://github.com/CoachChuckFF/Solana-GPT"
+                target="_blank"
+                rel="noopener noreferrer">
+                <FaGithub className="text-2xl text-white cursor-pointer hover:text-blue-500" />
+              </a>
+              <a
+                href="https://twitter.com/ExcaliburDAO"
+                target="_blank"
+                rel="noopener noreferrer">
+                <FaTwitter className="text-2xl text-white cursor-pointer hover:text-blue-500" />
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </>
