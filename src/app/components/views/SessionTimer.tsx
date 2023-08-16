@@ -10,7 +10,7 @@ export function SessionTimer(props: SessionTimerProps) {
   const [now, setNow] = useState(~0);
   
   const endTime = timestamp + durationMS;
-  const timeLeft = endTime - now;
+  const timeLeft = Math.min(endTime - now, durationMS);
   const hasTime = timeLeft > 0;
   const isLoading = timestamp === 0 || now === ~0;
 
@@ -40,7 +40,7 @@ export function SessionTimer(props: SessionTimerProps) {
       <button
         className="py-2 px-6 rounded-lg bg-blue-500 text-white"
         type={hasTime ? "submit" : "button"}
-        onClick={hasTime ? () => {} : buyMoreTime}
+        onClick={hasTime || isLoading ? () => {} : buyMoreTime}
       >
         {isLoading ? "Loading" : hasTime ? "Send" : "Buy More Time"}
       </button>

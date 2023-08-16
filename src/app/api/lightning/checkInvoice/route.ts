@@ -8,11 +8,12 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
     try {
         const playload = (await req.json()) as LightningInvoice;
-        const response = await checkInvoicePaidServer(playload);
+        const paid = await checkInvoicePaidServer(playload);
 
-        await kv.set(playload.uuid, Date.now())
+        if(paid)
+            await kv.set(playload.uuid, Date.now())
 
-        return NextResponse.json({ok: true, paid: response});
+        return NextResponse.json({ok: true, paid: paid});
     } catch(e){
         return NextResponse.json({ok: false, error: `${e}`});
     }

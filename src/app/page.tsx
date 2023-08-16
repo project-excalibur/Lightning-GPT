@@ -20,8 +20,9 @@ export default function Home() {
   const [shakeFeedbackOn, setShakeFeedbackOn] = useState(false);
   const [userUUID, setUserUUID] = useState<string | null>(null);
   const [timestamp, setTimestamp] = useState<number>(0);
-  const [invoiceInterval, setInvoiceInterval] = useState<NodeJS.Timer | null>();
+  const invoiceIntervalRef = useRef<NodeJS.Timer | null>(null);
 
+  
   const { Canvas } = useQRCode();
   const questionInputRef = useRef<HTMLTextAreaElement>(null);
   const { messages, input, handleInputChange, handleSubmit } = useChat({body: {uuid: userUUID}})
@@ -29,16 +30,18 @@ export default function Home() {
   // -------------- EFFECTS ---------------------------
 
   useEffect(() => {
-    requestProvider().then(setWebln);
+    requestProvider().then(setWebln).catch((e)=>{
+      console.log("No LN Provider");
+    })
   }, []);
 
   useEffect(() => {
-    return ()=>{
-      if(invoiceInterval){
-        clearInterval(invoiceInterval)
+    return () => {
+      if (invoiceIntervalRef.current) {
+        clearInterval(invoiceIntervalRef.current);
       }
-    }
-  }, [invoiceInterval]);
+    };
+  }, []);
 
   useEffect(() => {
     if(typeof window !== "undefined"){
@@ -82,30 +85,28 @@ export default function Home() {
         uuid: userUUID
         // expiry: 30, //seconds
       }).then((invoice) => {
-
+  
         setLightningInvoice(invoice);
-        setInvoiceInterval(
-          setInterval(()=>{
-            checkInvoicePaid(invoice).then((isPaid) => {
-              if (isPaid) {
-                setLightningInvoice(null);
-                getTimestamp(userUUID).then(setTimestamp)
-                if(invoiceInterval){
-                  clearInterval(invoiceInterval as NodeJS.Timer);
-                  setInvoiceInterval(null);
-                }
+        const interval = setInterval(() => {
+          checkInvoicePaid(invoice).then((isPaid) => {
+            if (isPaid) {
+              setLightningInvoice(null);
+              getTimestamp(userUUID).then(setTimestamp);
+              if (invoiceIntervalRef.current) {
+                clearInterval(invoiceIntervalRef.current);
+                invoiceIntervalRef.current = null;
               }
-            });
-          }, 1000)
-        )
-
-        if(webln){
+            }
+          });
+        }, 1000);
+        invoiceIntervalRef.current = interval;  // Store the interval in the ref
+  
+        if (webln) {
           webln.sendPayment(invoice.invoice);
         }
-
       });
     }
-  }
+  };
 
   return (
     <>
