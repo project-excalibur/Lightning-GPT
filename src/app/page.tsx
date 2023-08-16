@@ -74,6 +74,12 @@ export default function Home() {
       return;
     }
 
+    if(timestamp + Number(process.env.NEXT_PUBLIC_SESSION_TIME) < Date.now()){
+      alert("You need to buy more time")
+      shake();
+      return;
+    }
+
     handleSubmit(e);
   }
 

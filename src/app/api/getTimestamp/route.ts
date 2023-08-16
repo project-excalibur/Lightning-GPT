@@ -9,7 +9,7 @@ export async function POST(req: Request) {
         let timestamp = (await kv.get(uuid)) as number;
 
         if(!timestamp){
-            timestamp = 0
+            timestamp = 1;
         }
 
         return NextResponse.json({ok: true, timestamp});
