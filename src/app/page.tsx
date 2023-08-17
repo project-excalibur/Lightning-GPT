@@ -15,10 +15,12 @@ import {
 import { useChat } from "ai/react"
 import { getUUID } from "./components/controllers/getId"
 import SessionTimer from "./components/views/SessionTimer"
+import Link from "next/link"
 
 export default function Home() {
   // -------------- STATE ---------------------------
   const [webln, setWebln] = useState<null | WebLNProvider>(null)
+  const [welcomeMessageOn, setWelcomeMessageOn] = useState(false)
   const [lightningInvoice, setLightningInvoice] =
     useState<null | LightningInvoice>(null)
   const [shakeFeedbackOn, setShakeFeedbackOn] = useState(false)
@@ -40,6 +42,10 @@ export default function Home() {
       .catch(e => {
         console.log("No LN Provider")
       })
+  }, [])
+
+  useEffect(() => {
+    setWelcomeMessageOn(true)
   }, [])
 
   useEffect(() => {
@@ -119,7 +125,7 @@ export default function Home() {
         invoiceIntervalRef.current = interval // Store the interval in the ref
 
         if (webln) {
-          webln.sendPayment(invoice.invoice).catch((e)=>{
+          webln.sendPayment(invoice.invoice).catch(e => {
             console.log(`Error paying from webln ${e}`)
             // setLightningInvoice(null);
             // getTimestamp(userUUID).then(setTimestamp);
@@ -146,6 +152,25 @@ export default function Home() {
       </Head>
 
       <div className="relative flex flex-col h-screen text-white bg-gray-900">
+        {/* Welcome Modal */}
+        <Modal isOpen={welcomeMessageOn}>
+          <div className="relative flex flex-col items-center w-1/2 gap-2">
+            <p className="text-xl font-semibold">Welcome to Lighting GPT!</p>
+            <p className="mt-4 text-start">
+              We are a pay per question chatbot. You can ask any question you
+              want after paying a small fee using a Lightining Wallet like{" "}
+              <Link className="text-green-500" href="https://phoenix.acinq.co/">
+                Phoenix Wallet{" "}
+              </Link>
+              you can close this message and start exploring the application.
+            </p>
+            <button
+              onClick={() => setWelcomeMessageOn(false)}
+              className="absolute right-0 top-1">
+              ❌
+            </button>
+          </div>
+        </Modal>
         {/* Socials */}
         <div
           className="absolute z-10 text-4xl text-white transform -translate-x-1/2 -translate-y-1/2 md:text-5xl top-1/2 left-1/2 text-opacity-10"
